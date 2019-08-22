@@ -60,6 +60,9 @@ func Tally(reader *strings.Reader, buffer *bytes.Buffer) error {
 	lineCount := 1
 
 	for char, _, err := reader.ReadRune(); err != io.EOF; char, _, err = reader.ReadRune() {
+		if err != nil {
+			return fmt.Errorf("Failed to read from stream at line: %d", lineCount)
+		}
 		switch {
 		case char == ';' && firstTeam == "":
 			firstTeam = bufferString
@@ -77,8 +80,9 @@ func Tally(reader *strings.Reader, buffer *bytes.Buffer) error {
 			lineCount++
 
 			tallyResult, err = tallyResult.addResultToScoreCard(firstTeam, secondTeam, result)
+			firstTeam, secondTeam, result = "", "", ""
 			if err != nil {
-				return fmt.Errorf("Bad result at line %d", lineCount)
+				return fmt.Errorf("Bad result at line %d: %s", lineCount, err.Error())
 			}
 			continue
 
@@ -89,4 +93,13 @@ func Tally(reader *strings.Reader, buffer *bytes.Buffer) error {
 			bufferString += string(char)
 		}
 	}
+	// Write header
+	buffer.WriteString(fmt.Sprintf("%30s|%4s|%4s|%4s|%4s|%4s|\n", "Team", "MP", "W", "D", "L", "P"))
+	for teamName, results := range tallyResult {
+		totalPlayed := results.Won + results.Lost + results.Drew
+		points := 3*results.Won + results.Drew
+		summary := fmt.Sprintf("%30s|%4d|%4d|%4d|%4d|%4d|\n", teamName, totalPlayed, results.Won, results.Drew, results.Lost, points)
+		buffer.WriteString(summary)
+	}
+	return nil
 }
