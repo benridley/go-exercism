@@ -1,105 +1,148 @@
 package tournament
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"sort"
 	"strings"
 )
 
-// ScoreCard contains a grop of season results.
+// ScoreCard represents the number of wins, losses, and draws a team has in a season.
 type ScoreCard struct {
-	Won  int
-	Drew int
-	Lost int
+	Win, Loss, Draw int
 }
 
-// TallyResult provides a ScoreCard for each team.
-type TallyResult map[string]*ScoreCard
+type TeamPoints struct {
+	Name   string
+	Points int
+}
 
-func (T TallyResult) addResultToScoreCard(firstTeam, secondTeam, result string) (TallyResult, error) {
-	if _, ok := T[firstTeam]; !ok {
-		T[firstTeam] = &ScoreCard{
-			Won:  0,
-			Drew: 0,
-			Lost: 0,
+// TallyTable maps each team to its corresponding scorecard.
+type TallyTable map[string]*ScoreCard
+
+func (table TallyTable) addResultToTally(firstTeam, secondTeam, result string) (TallyTable, error) {
+	// Initialize teams if they aren't already in the tally
+	for _, team := range []string{firstTeam, secondTeam} {
+		_, found := table[team]
+		if !found {
+			table[team] = &ScoreCard{
+				Win:  0,
+				Loss: 0,
+				Draw: 0,
+			}
 		}
 	}
-	if _, ok := T[secondTeam]; !ok {
-		T[firstTeam] = &ScoreCard{
-			Won:  0,
-			Drew: 0,
-			Lost: 0,
-		}
+	if firstTeam == secondTeam {
+		return nil, fmt.Errorf("Cannot have two of the same teams in a match")
+	}
+	switch result {
+	case "win":
+		table[firstTeam].Win++
+		table[secondTeam].Loss++
+	case "loss":
+		table[firstTeam].Loss++
+		table[secondTeam].Win++
+	case "draw":
+		table[firstTeam].Draw++
+		table[secondTeam].Draw++
+	default:
+		return nil, fmt.Errorf("Invalid match result: %s", result)
 	}
 
-	if result == "win" {
-		T[firstTeam].Won++
-		T[secondTeam].Lost++
-	} else if result == "loss" {
-		T[firstTeam].Lost++
-		T[secondTeam].Won++
-	} else if result == "draw" {
-		T[firstTeam].Drew++
-		T[secondTeam].Drew++
-	} else {
-		return T, errors.New("Invalid result: " + result)
+	return table, nil
+}
+
+func (table TallyTable) toString() string {
+	var tallyBuffer strings.Builder
+
+	// Get team names sorted by score
+	pointsList := []TeamPoints{}
+	for teamName, scores := range table {
+		p := TeamPoints{
+			Name:   teamName,
+			Points: (scores.Win*3 + scores.Draw),
+		}
+		pointsList = append(pointsList, p)
 	}
-	return T, nil
+	sort.Slice(pointsList, func(i, j int) bool {
+		if pointsList[j].Points == pointsList[i].Points {
+			return pointsList[i].Name < pointsList[j].Name
+		}
+		return pointsList[i].Points > pointsList[j].Points
+	})
+
+	tallyBuffer.WriteString(fmt.Sprintf("%-31s| MP |  W |  D |  L |  P\n", "Team"))
+	for _, teamScores := range pointsList {
+		scores := table[teamScores.Name]
+		totalGames := scores.Draw + scores.Loss + scores.Win
+		points := scores.Win*3 + scores.Draw
+		tallyBuffer.WriteString(fmt.Sprintf("%-31s|%3d |%3d |%3d |%3d |%3d\n", teamScores.Name, totalGames, scores.Win, scores.Draw, scores.Loss, points))
+	}
+	return tallyBuffer.String()
 }
 
 // Tally returns tabulated match details from an input file
-func Tally(reader *strings.Reader, buffer *bytes.Buffer) error {
-	bufferString := ""
-	tallyResult := TallyResult{}
+func Tally(reader io.Reader, buffer io.Writer) error {
+	summary := TallyTable{}
 
-	firstTeam := ""
-	secondTeam := ""
-	result := ""
-	lineCount := 1
+	matchData, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return err
+	}
 
-	for char, _, err := reader.ReadRune(); err != io.EOF; char, _, err = reader.ReadRune() {
-		if err != nil {
-			return fmt.Errorf("Failed to read from stream at line: %d", lineCount)
-		}
+	var firstTeam, secondTeam, result, strBuffer strings.Builder
+	var seenChar, isCommented bool
+	lineNumber := 0
+	for _, ch := range matchData {
 		switch {
-		case char == ';' && firstTeam == "":
-			firstTeam = bufferString
-			bufferString = ""
+
+		case (ch == '#'):
+			isCommented = true
+
+		case isCommented && ch == '\n':
+			isCommented = false
+
+		case isCommented:
 			continue
 
-		case char == ';' && secondTeam == "":
-			secondTeam = bufferString
-			bufferString = ""
+		case (ch == '\n' || ch == ' ') && !seenChar:
 			continue
 
-		case char == '\n' && result == "":
-			result = bufferString
-			bufferString = ""
-			lineCount++
+		case (ch == ';' || ch == '\n') && strBuffer.Len() == 0:
+			return fmt.Errorf("Missing value at line: %d", lineNumber)
 
-			tallyResult, err = tallyResult.addResultToScoreCard(firstTeam, secondTeam, result)
-			firstTeam, secondTeam, result = "", "", ""
+		case ch == ';' && firstTeam.Len() == 0:
+			firstTeam = strBuffer
+			strBuffer.Reset()
+
+		case ch == ';' && secondTeam.Len() == 0:
+			secondTeam = strBuffer
+			strBuffer.Reset()
+
+		case ch == '\n' && result.Len() == 0 && firstTeam.Len() > 0 && secondTeam.Len() > 0:
+			result = strBuffer
+			summary, err = summary.addResultToTally(firstTeam.String(), secondTeam.String(), result.String())
 			if err != nil {
-				return fmt.Errorf("Bad result at line %d: %s", lineCount, err.Error())
+				return fmt.Errorf("Error at line %d: %s", lineNumber, err.Error())
 			}
-			continue
-
-		case char == '\n' && (firstTeam == "" || secondTeam == ""):
-			return fmt.Errorf("Syntax error in input at line: %d", lineCount)
+			lineNumber++
+			strBuffer.Reset()
+			firstTeam.Reset()
+			secondTeam.Reset()
+			result.Reset()
+			seenChar = false
 
 		default:
-			bufferString += string(char)
+			strBuffer.WriteByte(ch)
+			seenChar = true
 		}
 	}
-	// Write header
-	buffer.WriteString(fmt.Sprintf("%30s|%4s|%4s|%4s|%4s|%4s|\n", "Team", "MP", "W", "D", "L", "P"))
-	for teamName, results := range tallyResult {
-		totalPlayed := results.Won + results.Lost + results.Drew
-		points := 3*results.Won + results.Drew
-		summary := fmt.Sprintf("%30s|%4d|%4d|%4d|%4d|%4d|\n", teamName, totalPlayed, results.Won, results.Drew, results.Lost, points)
-		buffer.WriteString(summary)
+
+	if len(summary) == 0 {
+		return fmt.Errorf("Input file contained no season data")
 	}
+
+	buffer.Write([]byte(summary.toString()))
 	return nil
 }
