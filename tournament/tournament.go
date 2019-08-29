@@ -13,6 +13,7 @@ type ScoreCard struct {
 	Win, Loss, Draw int
 }
 
+// TeamPoints contains a team name and total number of points for easy sorting by points/alphabetical.
 type TeamPoints struct {
 	Name   string
 	Points int
