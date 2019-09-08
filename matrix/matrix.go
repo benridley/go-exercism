@@ -67,6 +67,9 @@ func (rows Matrix) Cols() [][]int {
 
 // Set a matrix to the values provided by string
 func (rows Matrix) Set(row, col, val int) bool {
+	if row < 0 || row > len(rows)-1 || col < 0 || col > len(rows[0])-1 {
+		return false
+	}
 	rows[row][col] = val
 	return true
 }
