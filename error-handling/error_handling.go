@@ -18,13 +18,16 @@ L:
 			continue L
 		}
 	}
+	defer res.Close()
 	defer func() {
 		r := recover()
 		if fe, ok := r.(FrobError); ok {
 			res.Defrob(fe.defrobTag)
+			e = fe
+		} else if err, ok := r.(error); ok {
+			e = err
 		}
 	}()
 	res.Frob(input)
-	defer res.Close()
 	return nil
 }
