@@ -1,12 +1,30 @@
 package account
 
-import "sync"
+import (
+	"sync"
+)
 
 // Account represents a bank account, with balance and active status
 type Account struct {
-	mu      sync.Mutex
+	mu              sync.Mutex
+	balance         int
+	active          bool
+	closeRequests   chan closeRequest
+	depositRequests chan depositRequest
+}
+
+type closeRequest struct {
+	responder chan bankResponse
+}
+
+type depositRequest struct {
+	responder chan bankResponse
+	amt       int
+}
+
+type bankResponse struct {
+	ok      bool
 	balance int
-	active  bool
 }
 
 // New creates a bank account.
@@ -16,9 +34,39 @@ func New(amt int) *Account {
 	}
 
 	acc := Account{
-		balance: amt,
-		active:  true,
+		balance:         amt,
+		active:          true,
+		closeRequests:   make(chan closeRequest),
+		depositRequests: make(chan depositRequest),
 	}
+
+	go func() {
+		for {
+			closeRequest := <-acc.closeRequests
+			if acc.active {
+				acc.active = false
+				closeRequest.responder <- bankResponse{ok: true, balance: acc.balance}
+			} else {
+				closeRequest.responder <- bankResponse{ok: false, balance: 0}
+			}
+		}
+	}()
+
+	// Handle deposit requests
+	go func() {
+		for {
+			depositReq := <-acc.depositRequests
+			if !acc.active {
+				depositReq.responder <- bankResponse{ok: false, balance: 0}
+			} else if (acc.balance + depositReq.amt) < 0 {
+				depositReq.responder <- bankResponse{ok: false, balance: 0}
+			} else {
+				acc.balance += depositReq.amt
+				depositReq.responder <- bankResponse{ok: true, balance: acc.balance}
+			}
+		}
+	}()
+
 	return &acc
 }
 
@@ -37,41 +85,24 @@ func (acc *Account) Balance() (int, bool) {
 
 // Close deactivates a bank account and prevents further transactions.
 func (acc *Account) Close() (int, bool) {
-	acc.mu.Lock()
-	defer acc.mu.Unlock()
-
-	if !acc.active {
-		return 0, false
-	}
-	acc.active = false
-	return acc.balance, true
+	responseChan := make(chan bankResponse)
+	acc.closeRequests <- closeRequest{responder: responseChan}
+	resp := <-responseChan
+	return resp.balance, resp.ok
 }
 
 // Deposit adds funds to a bank account balance
 func (acc *Account) Deposit(funds int) (int, bool) {
-	acc.mu.Lock()
-	defer acc.mu.Unlock()
-
-	if !acc.active {
-		return 0, false
-	}
-
-	if (acc.balance + funds) < 0 {
-		return 0, false
-	}
-
-	acc.balance += funds
-	return acc.balance, true
+	responseChan := make(chan bankResponse)
+	acc.depositRequests <- depositRequest{responder: responseChan, amt: funds}
+	resp := <-responseChan
+	return resp.balance, resp.ok
 }
 
 // Withdrawal reduces funds in a bank account
 func (acc *Account) Withdrawal(funds int) (int, bool) {
-	acc.mu.Lock()
-	defer acc.mu.Unlock()
-
-	_, ok := acc.Deposit(-funds)
-	if !ok {
-		return acc.balance, false
-	}
-	return acc.balance, true
+	responseChan := make(chan bankResponse)
+	acc.depositRequests <- depositRequest{responder: responseChan, amt: -funds}
+	resp := <-responseChan
+	return resp.balance, resp.ok
 }
