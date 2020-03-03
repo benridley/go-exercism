@@ -95,20 +95,20 @@ var testCases = []struct {
 		map[string][2][2]int{"elixir": {{5, 0}, {0, 0}}},
 		false,
 	},
-	// {
-	// 	"Should locate multiple words written in different horizontal directions",
-	// 	[]string{"jefblpepre", "camdcimgtc", "oivokprjsm", "pbwasqroua", "rixilelhrs", "wolcqlirpc", "screeaumgr", "alxhpburyi", "jalaycalmp", "clojurermt"},
-	// 	[]string{"elixir", "clojure"},
-	// 	map[string][2][2]int{"clojure": {{0, 9}, {6, 9}}, "elixir": {{5, 4}, {0, 4}}},
-	// 	false,
-	// },
-	// {
-	// 	"Should locate words written top to bottom",
-	// 	[]string{"jefblpepre", "camdcimgtc", "oivokprjsm", "pbwasqroua", "rixilelhrs", "wolcqlirpc", "screeaumgr", "alxhpburyi", "jalaycalmp", "clojurermt"},
-	// 	[]string{"clojure", "elixir", "ecmascript"},
-	// 	map[string][2][2]int{"clojure": {{0, 9}, {6, 9}}, "ecmascript": {{9, 0}, {9, 9}}, "elixir": {{5, 4}, {0, 4}}},
-	// 	false,
-	// },
+	{
+		"Should locate multiple words written in different horizontal directions",
+		[]string{"jefblpepre", "camdcimgtc", "oivokprjsm", "pbwasqroua", "rixilelhrs", "wolcqlirpc", "screeaumgr", "alxhpburyi", "jalaycalmp", "clojurermt"},
+		[]string{"elixir", "clojure"},
+		map[string][2][2]int{"clojure": {{0, 9}, {6, 9}}, "elixir": {{5, 4}, {0, 4}}},
+		false,
+	},
+	{
+		"Should locate words written top to bottom",
+		[]string{"jefblpepre", "camdcimgtc", "oivokprjsm", "pbwasqroua", "rixilelhrs", "wolcqlirpc", "screeaumgr", "alxhpburyi", "jalaycalmp", "clojurermt"},
+		[]string{"clojure", "elixir", "ecmascript"},
+		map[string][2][2]int{"clojure": {{0, 9}, {6, 9}}, "ecmascript": {{9, 0}, {9, 9}}, "elixir": {{5, 4}, {0, 4}}},
+		false,
+	},
 	// {
 	// 	"Should locate words written bottom to top",
 	// 	[]string{"jefblpepre", "camdcimgtc", "oivokprjsm", "pbwasqroua", "rixilelhrs", "wolcqlirpc", "screeaumgr", "alxhpburyi", "jalaycalmp", "clojurermt"},
@@ -151,4 +151,31 @@ var testCases = []struct {
 	// 	map[string][2][2]int{},
 	// 	true,
 	// },
+}
+var transposeTestCases = []struct {
+	puzzle           []string
+	transposedPuzzle []string
+}{
+	{
+		[]string{"abc", "def", "gih"},
+		[]string{"adg", "bei", "cfh"},
+	},
+}
+
+var transposeDiagTestCases = []struct {
+	puzzle           []string
+	transposedPuzzle []string
+}{
+	{
+		[]string{"abcde", "fghij", "klmno", "pqrst", "uvwxy"},
+		[]string{"u", "pv", "kqw", "flrx", "agmsy", "bhnt", "cio", "dj", "e"},
+	},
+	{
+		[]string{"abc", "def", "hij", "klm", "nop"},
+		[]string{"n", "ko", "hlp", "dim", "aej", "bf", "c"},
+	},
+	{
+		[]string{"abcdefgh", "ijklmnop"},
+		[]string{"i", "aj", "bk", "cl", "dm", "en", "fo", "gp", "h"},
+	},
 }

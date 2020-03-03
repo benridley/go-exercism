@@ -10,10 +10,14 @@ func Solve(words, puzzle []string) (map[string][2][2]int, error) {
 	found := map[string][2][2]int{}
 	foundLeftRight, err := scanLeftRight(words, puzzle)
 	foundRightLeft, err := scanRightLeft(words, puzzle)
+	foundTopBorrom, err := scanTopBottom(words, puzzle)
 	for k, v := range foundLeftRight {
 		found[k] = v
 	}
 	for k, v := range foundRightLeft {
+		found[k] = v
+	}
+	for k, v := range foundTopBorrom {
 		found[k] = v
 	}
 	if len(found) == 0 {
@@ -52,13 +56,12 @@ func scanRightLeft(words, puzzle []string) (map[string][2][2]int, error) {
 
 func scanTopBottom(words, puzzle []string) (map[string][2][2]int, error) {
 	found := map[string][2][2]int{}
+	puzzle = TransposePuzzle(puzzle)
 	for _, word := range words {
 		for i, row := range puzzle {
-			j := strings.Index(reverseString(row), word)
+			j := strings.Index(row, word)
 			if j != -1 {
-				// un-reverse j's index
-				j = len(row) - j - 1
-				found[word] = [2][2]int{{j, i}, {j - len(word) + 1, i}}
+				found[word] = [2][2]int{{i, j}, {i - len(word) - 1, j}}
 			}
 		}
 	}
@@ -73,14 +76,57 @@ func reversePuzzle(puzzle []string) []string {
 	return rev
 }
 
-func transposePuzzle(puzzle []string) []string {
-	tr := make([]string, len(puzzle[0]))
+// TransposePuzzle converts columns of a puzzle to rows and vice versa
+func TransposePuzzle(puzzle []string) []string {
+	tr := make([][]byte, len(puzzle[0]))
+	for i := range puzzle[0] {
+		trRow := make([]byte, len(puzzle))
+		tr[i] = trRow
+	}
 	for i, row := range puzzle {
-		for j, col := range row {
+		for j := range row {
 			tr[j][i] = puzzle[i][j]
 		}
 	}
-	return tr
+	trString := make([]string, len(puzzle[0]))
+	for i := range tr {
+		trString[i] = string(tr[i])
+	}
+	return trString
+}
+
+// PuzzleDiagonals gets the diagonals of the puzzle, bottom left to top right.
+func PuzzleDiagonals(puzzle []string) []string {
+	tr := make([][]byte, (len(puzzle) + len(puzzle[0]) - 1))
+	// primary/lower diagonal
+	for row := len(puzzle) - 1; row >= 0; row-- {
+		diagLength := min((len(puzzle) - row), len(puzzle[0]))
+		trRow := make([]byte, diagLength)
+		for i := 0; i < diagLength; i++ {
+			trRow[i] = puzzle[row+i][i]
+		}
+		tr[len(puzzle)-row-1] = trRow
+	}
+	// upper diagonal
+	for col := 1; col < len(puzzle[0]); col++ {
+		diagLength := min((len(puzzle[0]) - col), len(puzzle))
+		trRow := make([]byte, diagLength)
+		for i := 0; i < diagLength; i++ {
+			trRow[i] = puzzle[i][col+i]
+		}
+		tr[len(puzzle)-1+col] = trRow
+	}
+	trString := make([]string, len(tr))
+	for i := range tr {
+		trString[i] = string(tr[i])
+	}
+	return trString
+}
+
+func getDiagonalIndex(puzzle []string, i, j int) (int, int)
+	if i < len(puzzle)
+	row := len(puzzle) - 1 - (i + j)
+
 }
 
 func reverseString(s string) string {
@@ -89,4 +135,11 @@ func reverseString(s string) string {
 		o[len(o)-1-i] = c
 	}
 	return string(o)
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

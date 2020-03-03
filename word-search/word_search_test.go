@@ -25,6 +25,23 @@ func TestSolve(t *testing.T) {
 	}
 }
 
+func TestTransposePuzzle(t *testing.T) {
+	for _, tc := range transposeTestCases {
+		if !reflect.DeepEqual(TransposePuzzle(tc.puzzle), tc.transposedPuzzle) {
+			t.Fatalf("Failed: Transposed puzzle was not correct")
+		}
+		t.Logf("Passed")
+	}
+}
+
+func TestDiagTransposePuzzle(t *testing.T) {
+	for _, tc := range transposeDiagTestCases {
+		if !reflect.DeepEqual(PuzzleDiagonals(tc.puzzle), tc.transposedPuzzle) {
+			t.Fatalf("Failed: Transposed puzzle was not correct")
+		}
+		t.Logf("Passed")
+	}
+}
 func BenchmarkSolve(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, tc := range testCases {
