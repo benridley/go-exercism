@@ -98,7 +98,7 @@ func TransposePuzzle(puzzle []string) []string {
 // PuzzleDiagonals gets the diagonals of the puzzle, bottom left to top right.
 func PuzzleDiagonals(puzzle []string) []string {
 	tr := make([][]byte, (len(puzzle) + len(puzzle[0]) - 1))
-	// primary/lower diagonal
+	// primary & lower diagonal
 	for row := len(puzzle) - 1; row >= 0; row-- {
 		diagLength := min((len(puzzle) - row), len(puzzle[0]))
 		trRow := make([]byte, diagLength)
@@ -123,10 +123,16 @@ func PuzzleDiagonals(puzzle []string) []string {
 	return trString
 }
 
-func getDiagonalIndex(puzzle []string, i, j int) (int, int)
-	if i < len(puzzle)
-	row := len(puzzle) - 1 - (i + j)
-
+// GetDiagonalIndex translates a location found in a diagonal back to a location in the puzzle.
+func GetDiagonalIndex(puzzle []string, i, j int) (int, int) {
+	if i < (len(puzzle) - 1) {
+		row := (len(puzzle) - 1) - i + j
+		col := j
+		return row, col
+	}
+	row := j
+	col := i - (len(puzzle) - 1) + j
+	return row, col
 }
 
 func reverseString(s string) string {

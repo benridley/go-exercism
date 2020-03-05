@@ -42,6 +42,17 @@ func TestDiagTransposePuzzle(t *testing.T) {
 		t.Logf("Passed")
 	}
 }
+
+func TestGetDiagonalIndex(t *testing.T) {
+	for _, tc := range getDiagonalIndexTestCases {
+		row, col := GetDiagonalIndex(tc.puzzle, tc.i, tc.j)
+		if row != tc.row || col != tc.col {
+			t.Fatalf("Failed to map index back to puzzle location, got %d, %d. Expected %d, %d.", row, col, tc.row, tc.col)
+		}
+		t.Logf("Passed index mapping")
+	}
+}
+
 func BenchmarkSolve(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, tc := range testCases {

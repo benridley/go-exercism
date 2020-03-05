@@ -179,3 +179,15 @@ var transposeDiagTestCases = []struct {
 		[]string{"i", "aj", "bk", "cl", "dm", "en", "fo", "gp", "h"},
 	},
 }
+
+var getDiagonalIndexTestCases = []struct {
+	puzzle   []string
+	i, j     int // Coordinates of the index in the diagonal
+	row, col int // Coordinates in the original puzzle
+}{
+	{
+		[]string{"abcde", "fghij", "klmno", "pqrst", "uvwxy"},
+		8, 0,
+		0, 4,
+	},
+}
