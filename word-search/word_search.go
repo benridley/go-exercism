@@ -10,18 +10,41 @@ func Solve(words, puzzle []string) (map[string][2][2]int, error) {
 	found := map[string][2][2]int{}
 	foundLeftRight, err := scanLeftRight(words, puzzle)
 	foundRightLeft, err := scanRightLeft(words, puzzle)
-	foundTopBorrom, err := scanTopBottom(words, puzzle)
+	foundTopBottom, err := scanTopBottom(words, puzzle)
+	foundBottomTop, err := scanBottomTop(words, puzzle)
+	foundTopLeftBottomRight, err := scanTopLeftBottomRight(words, puzzle)
+	foundBottomRightTopLeft, err := scanBottomRightTopLeft(words, puzzle)
+	foundBottomLeftTopRight, err := scanBottomLeftTopRight(words, puzzle)
+	foundTopRightBottomLeft, err := scanTopRightBottomLeft(words, puzzle)
 	for k, v := range foundLeftRight {
 		found[k] = v
 	}
 	for k, v := range foundRightLeft {
 		found[k] = v
 	}
-	for k, v := range foundTopBorrom {
+	for k, v := range foundTopBottom {
+		found[k] = v
+	}
+	for k, v := range foundBottomTop {
+		found[k] = v
+	}
+	for k, v := range foundTopLeftBottomRight {
+		found[k] = v
+	}
+	for k, v := range foundBottomRightTopLeft {
+		found[k] = v
+	}
+	for k, v := range foundBottomLeftTopRight {
+		found[k] = v
+	}
+	for k, v := range foundTopRightBottomLeft {
 		found[k] = v
 	}
 	if len(found) == 0 {
 		return nil, errors.New("No words found in input puzzle")
+	}
+	if len(found) != len(words) {
+		return nil, errors.New("Not all words are present in the puzzle")
 	}
 	return found, err
 }
@@ -58,10 +81,100 @@ func scanTopBottom(words, puzzle []string) (map[string][2][2]int, error) {
 	found := map[string][2][2]int{}
 	puzzle = TransposePuzzle(puzzle)
 	for _, word := range words {
-		for i, row := range puzzle {
+		for i, col := range puzzle {
+			j := strings.Index(col, word)
+			if j != -1 {
+				found[word] = [2][2]int{{i, j}, {i, j + len(word) - 1}}
+			}
+		}
+	}
+	return found, nil
+}
+
+func scanBottomTop(words, puzzle []string) (map[string][2][2]int, error) {
+	found := map[string][2][2]int{}
+	puzzle = reversePuzzle(TransposePuzzle(puzzle))
+	for _, word := range words {
+		for i, col := range puzzle {
+			j := strings.Index(col, word)
+			if j != -1 {
+				// un-reverse j's index
+				j = len(col) - j - 1
+				found[word] = [2][2]int{{i, j}, {i, j - (len(word) - 1)}}
+			}
+		}
+	}
+	return found, nil
+}
+
+func scanTopLeftBottomRight(words, puzzle []string) (map[string][2][2]int, error) {
+	found := map[string][2][2]int{}
+	diagonals := PuzzleDiagonals(puzzle)
+	for _, word := range words {
+		for i, row := range diagonals {
 			j := strings.Index(row, word)
 			if j != -1 {
-				found[word] = [2][2]int{{i, j}, {i - len(word) - 1, j}}
+				xi, xj := GetDiagonalIndex(puzzle, i, j)
+				yi, yj := GetDiagonalIndex(puzzle, i, j+(len(word)-1))
+				found[word] = [2][2]int{{xi, xj}, {yi, yj}}
+			}
+		}
+	}
+	return found, nil
+}
+
+func scanBottomRightTopLeft(words, puzzle []string) (map[string][2][2]int, error) {
+	found := map[string][2][2]int{}
+	diagonals := PuzzleDiagonals(puzzle)
+	for _, word := range words {
+		for i, row := range diagonals {
+			j := strings.Index(reverseString(row), word)
+			if j != -1 {
+				// un-reverse j's index
+				j = len(row) - j - 1
+				xi, xj := GetDiagonalIndex(puzzle, i, j)
+				yi, yj := GetDiagonalIndex(puzzle, i, j-len(word)+1)
+				found[word] = [2][2]int{{xj, xi}, {yj, yi}}
+			}
+		}
+	}
+	return found, nil
+}
+
+// Reverse puzzle, then reverse row to scan this direction.
+func scanBottomLeftTopRight(words, puzzle []string) (map[string][2][2]int, error) {
+	found := map[string][2][2]int{}
+	diagonals := PuzzleDiagonals(reversePuzzle(puzzle))
+	for _, word := range words {
+		for i, row := range diagonals {
+			j := strings.Index(reverseString(row), word)
+			if j != -1 {
+				// un-reverse j's index
+				j = len(row) - j - 1
+				xi, xj := GetDiagonalIndex(puzzle, i, j)
+				xj = len(puzzle[xi]) - xj - 1
+				yi, yj := GetDiagonalIndex(puzzle, i, j-len(word)+1)
+				yj = len(puzzle[yi]) - yj - 1
+				found[word] = [2][2]int{{xj, xi}, {yj, yi}}
+			}
+		}
+	}
+	return found, nil
+}
+
+// Reverse puzzle to scan this direction.
+func scanTopRightBottomLeft(words, puzzle []string) (map[string][2][2]int, error) {
+	found := map[string][2][2]int{}
+	diagonals := PuzzleDiagonals(reversePuzzle(puzzle))
+	for _, word := range words {
+		for i, row := range diagonals {
+			j := strings.Index(row, word)
+			if j != -1 {
+				xi, xj := GetDiagonalIndex(puzzle, i, j)
+				xj = len(puzzle[xi]) - xj - 1
+				yi, yj := GetDiagonalIndex(puzzle, i, j+len(word)-1)
+				yj = len(puzzle[yi]) - yj - 1
+				found[word] = [2][2]int{{xj, xi}, {yj, yi}}
 			}
 		}
 	}
@@ -95,7 +208,7 @@ func TransposePuzzle(puzzle []string) []string {
 	return trString
 }
 
-// PuzzleDiagonals gets the diagonals of the puzzle, bottom left to top right.
+// PuzzleDiagonals gets the diagonals of the puzzle, bottom left to top right in \ direction.
 func PuzzleDiagonals(puzzle []string) []string {
 	tr := make([][]byte, (len(puzzle) + len(puzzle[0]) - 1))
 	// primary & lower diagonal
